@@ -1,0 +1,109 @@
+# Go specific ignores
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+*.cov
+coverage.txt
+coverage.html
+profile.cov
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+/vendor/
+/Godeps/
+/.glide/
+
+# Build output
+/bin/
+/dist/
+/_output/
+
+# Go module cache
+.go-cache/
+
+# Protocol buffer generated files
+*.pb.go
+*_grpc.pb.go
+
+# IDE specific files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.default
+*.iml
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+.envrc
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Project specific
+/examples/*/vendor/
+/examples/*/.env
+/examples/*/config.local.yaml
+/examples/*/config.dev.yaml
+/examples/*/bin/
+/examples/*/dist/
+.secrets/
+secrets.json
+config.local.yaml
+config.dev.yaml
+.apikey
+
+# Debugging
+__debug_bin
+.dlv/
+debug
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+tmp/
+.tmp/
+
+# Mock generation
+mock_*.go
+mocks/
+
+# Documentation generation
+/docs/generated/
+/site/
+
+# Example outputs
+examples/*/output/
+examples/*/tmp/
+
+# Test reports
+report.xml
+junit-report.xml
+test-results/
+
+# Benchmarking
+benchmarks/results/
+bench.txt

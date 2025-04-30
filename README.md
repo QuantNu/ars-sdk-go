@@ -1,11 +1,60 @@
-# Agent Registration Server Go Client
+# ARS Go SDK
 
-A Go client library for interacting with the Agent Registration Server (ARS).
+Go SDK for the Agent Registration Server (ARS).
+
+## Overview
+
+The ARS Go SDK provides a client library for interacting with the Agent Registration Server, enabling Go applications to register agents, discover capabilities, manage sessions, and execute operations across different agent protocols.
 
 ## Installation
 
+### For Users
+
 ```bash
-go get github.com/yourusername/ars/sdk/go
+go get github.com/quantnu/ars-go-sdk
+```
+
+### For Developers
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/quantnu/ars.git
+cd ars/sdk/go
+go mod tidy
+```
+
+## Building Independently
+
+The Go SDK can be built independently using the included Makefile:
+
+```bash
+# Download dependencies, run tests, and build
+make
+
+# Individual steps
+make deps      # Download dependencies
+make build     # Build the project
+make test      # Run tests
+make clean     # Clean build artifacts
+make lint      # Run linters
+make fmt       # Format code
+```
+
+If you don't have `make` available, you can use these commands directly:
+
+```bash
+# Download dependencies
+go mod tidy
+
+# Build the project
+go build -o bin/ars-client ./...
+
+# Run tests
+go test -v ./...
+
+# Format code
+go fmt ./...
 ```
 
 ## Usage
@@ -14,98 +63,140 @@ go get github.com/yourusername/ars/sdk/go
 package main
 
 import (
-	"fmt"
-	"log"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/pem"
-	
-	arsclient "github.com/yourusername/ars/sdk/go"
+    "context"
+    "fmt"
+    "log"
+
+    ars "github.com/quantnu/ars-go-sdk"
 )
 
 func main() {
-	// Create a new client
-	client := arsclient.NewClient("https://ars.example.com")
-	
-	// Generate a key pair
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		log.Fatalf("Failed to generate key pair: %v", err)
-	}
-	
-	// Convert public key to PEM format
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		log.Fatalf("Failed to marshal public key: %v", err)
-	}
-	
-	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
-	
-	// Register the agent
-	response, err := client.RegisterAgent(arsclient.AgentDetails{
-		Name:         "My Agent",
-		Version:      "1.0.0",
-		Endpoint:     "https://myagent.example.com/api",
-		Capabilities: []string{"query", "response"},
-		PublicKey:    base64.StdEncoding.EncodeToString(publicKeyPEM),
-		Metadata: map[string]string{
-			"description": "My awesome agent",
-		},
-	})
-	if err != nil {
-		log.Fatalf("Failed to register agent: %v", err)
-	}
-	
-	fmt.Printf("Registered agent with ID: %s\n", response.Agent.ID)
-	
-	// Discover other agents
-	agents, err := client.DiscoverAgents(
-		[]string{"query"},
-		nil,
-		5,
-		0,
-	)
-	if err != nil {
-		log.Fatalf("Failed to discover agents: %v", err)
-	}
-	
-	fmt.Printf("Found %d agents with 'query' capability\n", agents.Total)
-	
-	// Deregister when done
-	if err := client.DeregisterAgent(); err != nil {
-		log.Fatalf("Failed to deregister agent: %v", err)
-	}
+    // Create client
+    client, err := ars.NewClient("https://ars.example.com")
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err)
+    }
+
+    // Register an agent
+    agent, token, err := client.RegisterAgent(context.Background(), ars.AgentRegistration{
+        Name:           "Example Agent",
+        Description:    "An example agent demonstrating basic functionality",
+        Capabilities:   []string{"translate", "summarize"},
+        Endpoint:       "https://example.com/agent",
+        Protocol:       ars.ProtocolMCP,
+        ProtocolVersion: "1.0",
+        PublicKey:      "example-public-key",
+    })
+    if err != nil {
+        log.Fatalf("Failed to register agent: %v", err)
+    }
+
+    fmt.Printf("Registered agent with ID: %s\n", agent.ID)
+    fmt.Printf("Agent token: %s\n", token)
+
+    // Discover agents with specific capabilities
+    agents, err := client.DiscoverAgents(context.Background(), ars.DiscoveryRequest{
+        Capabilities: []string{"translate"},
+        TrustLevels:  []ars.TrustLevel{ars.TrustLevelVerified, ars.TrustLevelPartner},
+    })
+    if err != nil {
+        log.Fatalf("Failed to discover agents: %v", err)
+    }
+
+    fmt.Printf("Found %d agents\n", len(agents))
+
+    // Execute a task
+    result, err := client.ExecuteTask(context.Background(), "translate", map[string]interface{}{
+        "text":           "Hello world",
+        "sourceLanguage": "en",
+        "targetLanguage": "fr",
+    })
+    if err != nil {
+        log.Fatalf("Failed to execute task: %v", err)
+    }
+
+    fmt.Printf("Translation result: %v\n", result)
 }
 ```
 
-## API Reference
-
-### Client
+## Session Management
 
 ```go
-client := arsclient.NewClient(serverURL)
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    ars "github.com/quantnu/ars-go-sdk"
+)
+
+func main() {
+    // Create client
+    client, err := ars.NewSessionClient("https://ars.example.com")
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err)
+    }
+
+    // Create a session
+    session, sessionToken, err := client.CreateSession(context.Background(), ars.SessionData{
+        Context: map[string]interface{}{
+            "user": "user-123",
+            "preferences": map[string]interface{}{
+                "language": "en",
+            },
+        },
+    })
+    if err != nil {
+        log.Fatalf("Failed to create session: %v", err)
+    }
+
+    fmt.Printf("Created session with ID: %s\n", session.ID)
+
+    // Execute task using session context
+    result, err := client.ExecuteTaskWithSession(context.Background(), "translate", map[string]interface{}{
+        "text":           "Hello world",
+        "targetLanguage": "fr",
+    }, session.ID)
+    if err != nil {
+        log.Fatalf("Failed to execute task: %v", err)
+    }
+
+    fmt.Printf("Translation result: %v\n", result)
+
+    // Update session with new information
+    err = client.UpdateSession(context.Background(), session.ID, ars.SessionData{
+        Context: map[string]interface{}{
+            "history": []map[string]interface{}{
+                {
+                    "task":   "translate",
+                    "input":  map[string]string{"text": "Hello world", "targetLanguage": "fr"},
+                    "output": "Bonjour le monde",
+                },
+            },
+        },
+    })
+    if err != nil {
+        log.Fatalf("Failed to update session: %v", err)
+    }
+}
 ```
 
-Create a new client with the server URL.
+## Features
 
-### Methods
+- **Agent Registration**: Register agents with the ARS
+- **Agent Discovery**: Find agents based on capabilities and trust levels
+- **Trust Verification**: Verify agent identity and trust levels
+- **Session Management**: Maintain stateful interactions between agents
+- **Cross-Protocol Operation**: Work with agents across different protocols
+- **Error Handling**: Comprehensive error handling and reporting
+- **Context Support**: Full Go context.Context support for cancellation and timeouts
 
-- `RegisterAgent(agent AgentDetails) (*RegisterResponse, error)`: Register a new agent
-- `DiscoverAgents(capabilities []string, metadataFilter map[string]string, limit, offset int) (*DiscoverResponse, error)`: Find agents matching criteria
-- `GetAgent(agentID string) (*AgentDetails, error)`: Get details for a specific agent
-- `UpdateAgent(details AgentDetails) (*AgentDetails, error)`: Update your agent
-- `DeregisterAgent() error`: Remove your agent from the registry
-- `VerifyAgent(agentID string, challenge, signature []byte) (bool, error)`: Verify another agent's identity
+## Contributing
 
-## Error Handling
-
-All methods return errors if the server returns an error status. You should handle these errors in your code.
+Contributions are welcome! Please see the main repository's CONTRIBUTING.md for guidelines.
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
